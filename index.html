@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Moonlight Peaks Save Editor</title>
+<style>
+  :root {
+    --bg: #15121f;
+    --panel: #1f1a2e;
+    --panel-2: #282140;
+    --line: #3a3156;
+    --text: #ece8f6;
+    --muted: #a59cc0;
+    --accent: #c9a7ff;
+    --accent-ink: #1b1030;
+    --good: #7fd4a8;
+    --warn: #ffcf73;
+    --bad: #ff8a8a;
+    --radius: 10px;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  button, input, select { font: inherit; color: inherit; }
+  button {
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
+    padding: 6px 12px; cursor: pointer;
+  }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .45; cursor: default; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button.danger { color: var(--bad); }
+  button.small { padding: 2px 8px; font-size: 12px; }
+  input[type=text], input[type=number], input[type=search], select {
+    background: #120f1b; border: 1px solid var(--line); border-radius: 7px; padding: 5px 8px; min-width: 0;
+  }
+  input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  code, .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12px; }
+
+  header {
+    position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center;
+    padding: 10px 20px; background: rgba(21, 18, 31, .95); border-bottom: 1px solid var(--line);
+  }
+  header h1 { font-size: 17px; margin: 0; letter-spacing: .3px; }
+  header h1 span { color: var(--accent); }
+  header .spacer { flex: 1; }
+  #status { color: var(--muted); }
+  #status.dirty { color: var(--warn); }
+
+  main { max-width: 1200px; margin: 0 auto; padding: 18px 20px 60px; }
+
+  #drop {
+    border: 2px dashed var(--line); border-radius: 16px; padding: 48px 24px; text-align: center; margin-top: 30px;
+  }
+  #drop.over { border-color: var(--accent); background: var(--panel); }
+  #drop h2 { margin: 0 0 6px; font-size: 20px; }
+  #drop p { color: var(--muted); margin: 6px 0; }
+  .steps { text-align: left; max-width: 620px; margin: 22px auto 0; color: var(--muted); }
+  .steps li { margin: 4px 0; }
+
+  nav.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 16px; flex-wrap: wrap; }
+  nav.tabs button { border: none; border-radius: 8px 8px 0 0; background: transparent; padding: 8px 14px; color: var(--muted); }
+  nav.tabs button.active { background: var(--panel); color: var(--text); box-shadow: inset 0 -2px 0 var(--accent); }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
+  .card .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+  .card .value { font-size: 20px; margin-top: 2px; overflow-wrap: anywhere; }
+  .card.wide { grid-column: 1 / -1; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .note { color: var(--muted); font-size: 13px; }
+  .note.warn { color: var(--warn); }
+  .callout { background: var(--panel); border-left: 3px solid var(--warn); border-radius: 6px; padding: 10px 14px; margin: 12px 0; color: var(--muted); }
+  .callout b { color: var(--text); }
+
+  .inv-layout { display: grid; grid-template-columns: 260px 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 760px) { .inv-layout { grid-template-columns: 1fr; } }
+  .inv-list { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px; position: sticky; top: 64px; max-height: calc(100vh - 90px); overflow: auto; }
+  .inv-list h4 { margin: 10px 8px 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; }
+  .inv-list button { display: flex; width: 100%; justify-content: space-between; gap: 8px; border: none; background: transparent; text-align: left; padding: 6px 8px; }
+  .inv-list button.active { background: var(--panel-2); box-shadow: inset 3px 0 0 var(--accent); }
+  .inv-list button .count { color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+  .inv-head { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-bottom: 12px; }
+  .inv-head h2 { margin: 0; font-size: 18px; }
+  .slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+  .slot { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px; display: flex; flex-direction: column; gap: 6px; min-height: 120px; }
+  .slot.empty { border-style: dashed; align-items: center; justify-content: center; color: var(--muted); background: transparent; }
+  .slot .idx { color: var(--muted); font-size: 11px; }
+  .slot .name { font-weight: 600; overflow-wrap: anywhere; }
+  .slot .name.unknown { color: var(--muted); font-weight: 400; font-style: italic; }
+  .slot .fields { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; }
+  .slot .fields input { width: 100%; }
+  .slot .acts { display: flex; gap: 6px; margin-top: auto; flex-wrap: wrap; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 99px; background: var(--panel-2); color: var(--muted); }
+  .tag.q { color: var(--warn); }
+
+  .modal-back { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 16px; }
+  .modal { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; width: min(760px, 100%); max-height: 90vh; display: flex; flex-direction: column; }
+  .modal header { position: static; border-radius: 14px 14px 0 0; background: transparent; }
+  .modal .body { overflow: auto; padding: 0 16px; flex: 1; }
+  .modal footer { border-top: 1px solid var(--line); padding: 12px 16px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .pick-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 8px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; }
+  .pick-row:hover { background: var(--panel-2); }
+  .pick-row.sel { border-color: var(--accent); background: var(--panel-2); }
+  .pick-row .where { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
+
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; }
+  td input[type=text] { width: 100%; }
+  .table-wrap { overflow-x: auto; }
+
+  .tree { font-size: 13px; }
+  .tree details { margin-left: 14px; }
+  .tree summary { cursor: pointer; padding: 1px 0; }
+  .tree summary .k, .tree .prim .k { color: var(--accent); }
+  .tree summary .meta { color: var(--muted); }
+  .tree .prim { margin-left: 28px; display: flex; gap: 8px; align-items: center; padding: 1px 0; }
+  .tree .prim input[type=text] { width: min(420px, 60vw); padding: 2px 6px; }
+  .tree .more { margin-left: 28px; }
+
+  #toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--panel-2); border: 1px solid var(--line); padding: 10px 16px; border-radius: 10px; max-width: min(640px, 92vw); z-index: 30; box-shadow: 0 6px 24px rgba(0,0,0,.4); }
+  #toast.err { border-color: var(--bad); }
+  #toast.ok { border-color: var(--good); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🌙 Moonlight Peaks <span>Save Editor</span></h1>
+  <label class="row" id="slotPick" hidden>Save slot <select id="slotSelect"></select></label>
+  <span class="spacer"></span>
+  <span id="status"></span>
+  <button id="openBtn">Open save…</button>
+  <button id="resetBtn" hidden>Discard changes</button>
+  <button id="saveBtn" class="primary" hidden>Download edited save</button>
+  <input id="fileInput" type="file" multiple hidden>
+</header>
+
+<main>
+  <section id="drop">
+    <h2>Drop your Moonlight Peaks save here</h2>
+    <p>A <b>JKSV backup .zip</b>, or the loose <code>GameData</code> + <code>GameMetaData</code> files (Switch or PC).</p>
+    <p><button class="primary" id="openBtn2">Choose file(s)…</button></p>
+    <ol class="steps">
+      <li>On the Switch, back up Moonlight Peaks with <b>JKSV</b> and copy the backup from <code>sdmc:/JKSV/Moonlight Peaks/</code> to your PC.</li>
+      <li>Open it here, edit, then click <b>Download edited save</b>.</li>
+      <li>Copy the edited zip back into the same JKSV folder and <b>Restore</b> it with the game closed.</li>
+    </ol>
+    <p class="note">Everything runs locally in your browser. Nothing is uploaded. Always keep your original backup.</p>
+  </section>
+
+  <section id="editor" hidden>
+    <nav class="tabs" id="tabs"></nav>
+    <div id="view"></div>
+  </section>
+</main>
+
+<div id="toast" hidden></div>
+
+<script src="js/losslessjson.js"></script>
+<script src="js/archive.js"></script>
+<script src="js/savemodel.js"></script>
+<script src="data/items.js"></script>
+<script src="data/game.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

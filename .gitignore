@@ -1,0 +1,28 @@
+# Game files and personal saves: never publish these.
+*.nsz
+*.nsp
+*.xci
+*.xcz
+*.nca
+*.zip
+GameData
+GameMetaData
+GlobalData
+.nx_save_meta.bin
+
+# Local tool settings
+.claude/
+
+# Overlay build output (publish the .ovl as a GitHub release instead)
+Moonlight Peaks toolbox/overlay/build/
+Moonlight Peaks toolbox/overlay/out/
+*.ovl
+*.elf
+*.nacp
+*.nro
+*.map
+*.lst
+
+# Python
+__pycache__/
+*.pyc
